@@ -1,0 +1,26 @@
+{
+  "name": "bookmark-manager-app",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "lint": "eslint --fix .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/bun": "latest",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.2.0",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.54.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "prettier-airbnb-config": "^1.0.0"
+  }
+}
