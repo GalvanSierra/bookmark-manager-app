@@ -1,4 +1,4 @@
-import type { Bookmark } from '@/types/bookmark';
+import type { Bookmark, SearchOptions } from '@/types/bookmark';
 
 export class BookmarkService {
   private bookmarks = new Map<string, Bookmark>();
@@ -63,6 +63,45 @@ export class BookmarkService {
     return deleted;
   }
 
+  public searchBy(options: SearchOptions): Bookmark[] {
+    let { includeWords } = options;
+    const {
+      excludeWords = [],
+      caseSensitive = false,
+      searchInHref = true,
+      searchInTitle = true,
+      searchInFolder = false,
+      includeAllWords = false,
+    } = options;
+
+    if (!includeWords || (Array.isArray(includeWords) && includeWords.length === 0)) {
+      return [];
+    }
+
+    // Normalizar includeWords a array
+    if (typeof includeWords === 'string') {
+      includeWords = [includeWords];
+    }
+
+    return Array.from(this.bookmarks.values()).filter((bookmark) => {
+      const searchTexts: string[] = [];
+
+      if (searchInTitle) searchTexts.push(bookmark.title);
+      if (searchInHref) searchTexts.push(bookmark.url);
+      if (searchInFolder && bookmark.folder) searchTexts.push(bookmark.folder);
+
+      const searchText = searchTexts.join(' ');
+
+      return this.matchWithKeywords(
+        searchText,
+        includeWords,
+        excludeWords,
+        caseSensitive,
+        includeAllWords,
+      );
+    });
+  }
+
   public getAll(): Bookmark[] {
     return Array.from(this.bookmarks.values());
   }
@@ -82,5 +121,27 @@ export class BookmarkService {
 
   private urlExists(url: string): boolean {
     return this.urlIndex.has(url);
+  }
+
+  private matchWithKeywords(
+    searchText: string,
+    includeWords: string[],
+    excludeWords: string[],
+    caseSensitive: boolean,
+    includeAllWords: boolean,
+  ): boolean {
+    const prepareText = (text: string) => (caseSensitive ? text : text.toLowerCase());
+
+    const searchTextPrep = prepareText(searchText);
+    const includeWordsPrep = includeWords.map(prepareText);
+    const excludeWordsPrep = excludeWords.map(prepareText);
+
+    const hasIncludeWord = includeAllWords
+      ? includeWordsPrep.every((word) => searchTextPrep.includes(word)) // AND lógico
+      : includeWordsPrep.some((word) => searchTextPrep.includes(word)); // OR lógico
+
+    const hasExcludeWord = excludeWordsPrep.some((word) => searchTextPrep.includes(word));
+
+    return hasIncludeWord && !hasExcludeWord;
   }
 }

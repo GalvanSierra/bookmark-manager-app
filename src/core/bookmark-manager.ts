@@ -1,6 +1,6 @@
 import { HtmlParser } from '@/parsers/html-parser';
 import { BookmarkService } from '@/services/bookmark.service';
-import type { Bookmark } from '@/types/bookmark';
+import type { Bookmark, SearchOptions } from '@/types/bookmark';
 import { FileHandler } from '@/utils/file-handler';
 import { Logger } from '@/utils/logger';
 
@@ -132,6 +132,19 @@ export class BookmarkManager {
     this.logger.info(`Deleted ${deleted} of ${bookmarks.length} bookmarks`);
 
     return deleted;
+  }
+
+  public searchBookmarksBy(options: SearchOptions): Bookmark[] {
+    const results = this.service.searchBy(options);
+
+    if (results.length === 0) {
+      this.logger.info(`No se han encontrado marcadores con palabras clave`);
+      return [];
+    }
+
+    this.logger.info(`Se han encontrado ${results.length} marcadores con palabras clave`);
+
+    return results;
   }
 
   public getAllBookmarks(): Bookmark[] {

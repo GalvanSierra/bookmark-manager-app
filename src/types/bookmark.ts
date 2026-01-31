@@ -16,3 +16,13 @@ export interface FolderNode {
   children: Map<string, FolderNode>;
   parent?: FolderNode;
 }
+
+export interface SearchOptions {
+  includeWords: string | string[];
+  excludeWords?: string[];
+  caseSensitive?: boolean;
+  searchInHref?: boolean;
+  searchInTitle?: boolean;
+  searchInFolder?: boolean;
+  includeAllWords?: boolean;
+}
