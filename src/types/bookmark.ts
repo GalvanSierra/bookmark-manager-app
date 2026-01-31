@@ -1,7 +1,18 @@
-// Bookmark type definitions
-export interface Bookmark {
-  id: string;
+export interface BookmarkSchema {
   title: string;
   url: string;
-  // TODO: Add additional bookmark properties
+  folder: string;
+  dateAdded: string;
+  icon?: string;
+}
+
+export type Bookmark = BookmarkSchema & {
+  id: string;
+};
+
+export interface FolderNode {
+  name: string;
+  bookmarks: Bookmark[];
+  children: Map<string, FolderNode>;
+  parent?: FolderNode;
 }
