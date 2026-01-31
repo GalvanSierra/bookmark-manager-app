@@ -69,4 +69,72 @@ export class BookmarkManager {
       this.logger.error('Failed to delete file', error);
     }
   }
+
+  // Operations CRUD
+  public addBookmark(bookmark: Bookmark): Bookmark | null {
+    return this.service.create(bookmark);
+  }
+
+  public addBookmarks(bookmarks: Bookmark[], folder?: string): number {
+    if (bookmarks.length === 0) {
+      this.logger.error('No bookmarks provided');
+      return 0;
+    }
+
+    const bookmarksToAdd = folder ? bookmarks.map((b) => ({ ...b, folder })) : bookmarks;
+    const created = this.service.createMany(bookmarksToAdd);
+
+    this.logger.info(`Added ${created} of ${bookmarks.length} bookmarks`);
+    return created;
+  }
+
+  public updateBookmark(id: string, bookmark: Bookmark): Bookmark | null {
+    const updated = this.service.update(id, bookmark);
+
+    if (updated === null) return null;
+
+    this.logger.debug(`Updated bookmark: ${id}`);
+    return updated;
+  }
+
+  public updateBookmarks(bookmarks: Bookmark[]): number {
+    if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+      this.logger.error('No bookmarks provided');
+      return 0;
+    }
+
+    const updated = this.service.updateMany(bookmarks);
+
+    this.logger.info(`Updated ${updated} of ${bookmarks.length} bookmarks`);
+
+    return updated;
+  }
+
+  public deleteBookmark(id: string): boolean {
+    const deleted = this.service.delete(id);
+
+    if (!deleted) {
+      this.logger.error(`Failed to delete bookmark: ${id}`);
+    }
+
+    return deleted;
+  }
+
+  public deleteBookmarks(bookmarks: Bookmark[]): number {
+    if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+      this.logger.error('No bookmarks provided');
+      return 0;
+    }
+
+    const ids = bookmarks.map((b) => b.id);
+    const deleted = this.service.deleteMany(ids);
+
+    this.logger.info(`Deleted ${deleted} of ${bookmarks.length} bookmarks`);
+
+    return deleted;
+  }
+
+  public getAllBookmarks(): Bookmark[] {
+    return this.service.getAll();
+  }
 }
