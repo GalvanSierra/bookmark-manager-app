@@ -147,6 +147,18 @@ export class BookmarkManager {
     return results;
   }
 
+  public extractBookmarksBy(options: SearchOptions): Bookmark[] {
+    const extracted = this.service.pickBy(options);
+
+    if (extracted.length > 0) {
+      this.logger.info(`Extracted ${extracted.length} bookmarks using keywords`);
+    } else {
+      this.logger.info(`No bookmarks found using keywords`);
+    }
+
+    return extracted;
+  }
+
   public getAllBookmarks(): Bookmark[] {
     return this.service.getAll();
   }

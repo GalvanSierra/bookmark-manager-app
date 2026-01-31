@@ -100,6 +100,16 @@ export class BookmarkService {
     });
   }
 
+  public pickBy(options: SearchOptions): Bookmark[] {
+    const bookmarksToRemove = this.searchBy(options);
+
+    if (bookmarksToRemove.length > 0) {
+      this.deleteMany(bookmarksToRemove.map((b) => b.id));
+    }
+
+    return bookmarksToRemove;
+  }
+
   public getAll(): Bookmark[] {
     return Array.from(this.bookmarks.values());
   }
