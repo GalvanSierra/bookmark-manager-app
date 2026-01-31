@@ -1,5 +1,6 @@
 import { HtmlParser } from '@/parsers/html-parser';
 import { BookmarkService } from '@/services/bookmark.service';
+import type { Bookmark } from '@/types/bookmark';
 import { FileHandler } from '@/utils/file-handler';
 import { Logger } from '@/utils/logger';
 
@@ -40,6 +41,32 @@ export class BookmarkManager {
       this.logger.info(`Saved ${bookmarks.length} bookmarks to ${this.path}`);
     } catch (error) {
       this.logger.error('Failed to save bookmarks', error);
+    }
+  }
+
+  public async saveOutputBookmarks(bookmarks: Bookmark[], fileName: string): Promise<void> {
+    if (bookmarks.length === 0) {
+      this.logger.warn('No bookmarks to save');
+    }
+
+    const targetPath = `data/staged/${fileName}.html`;
+
+    try {
+      const htmlContent = this.parser.serialize(bookmarks);
+      await this.fileHandler.write(targetPath, htmlContent);
+
+      this.logger.info(`Saved ${bookmarks.length} bookmarks to ${targetPath}`);
+    } catch (error) {
+      this.logger.error('Failed to save output bookmarks', error);
+    }
+  }
+
+  public async deleteFile(): Promise<void> {
+    try {
+      await this.fileHandler.delete(this.path);
+      this.logger.info(`Deleted file: ${this.path}`);
+    } catch (error) {
+      this.logger.error('Failed to delete file', error);
     }
   }
 }
