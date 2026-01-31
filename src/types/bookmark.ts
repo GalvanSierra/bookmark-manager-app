@@ -17,12 +17,12 @@ export interface FolderNode {
   parent?: FolderNode;
 }
 
+export type SearchFile = 'title' | 'url' | 'folder';
+
 export interface SearchOptions {
   includeWords: string | string[];
   excludeWords?: string[];
   caseSensitive?: boolean;
-  searchInHref?: boolean;
-  searchInTitle?: boolean;
-  searchInFolder?: boolean;
+  searchIn?: SearchFile[];
   includeAllWords?: boolean;
 }

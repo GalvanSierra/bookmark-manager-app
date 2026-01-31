@@ -68,9 +68,7 @@ export class BookmarkService {
     const {
       excludeWords = [],
       caseSensitive = false,
-      searchInHref = true,
-      searchInTitle = true,
-      searchInFolder = false,
+      searchIn = ['title', 'url'],
       includeAllWords = false,
     } = options;
 
@@ -86,9 +84,9 @@ export class BookmarkService {
     return Array.from(this.bookmarks.values()).filter((bookmark) => {
       const searchTexts: string[] = [];
 
-      if (searchInTitle) searchTexts.push(bookmark.title);
-      if (searchInHref) searchTexts.push(bookmark.url);
-      if (searchInFolder && bookmark.folder) searchTexts.push(bookmark.folder);
+      if (searchIn.includes('title')) searchTexts.push(bookmark.title);
+      if (searchIn.includes('url')) searchTexts.push(bookmark.url);
+      if (searchIn.includes('folder') && bookmark.folder) searchTexts.push(bookmark.folder);
 
       const searchText = searchTexts.join(' ');
 
