@@ -114,6 +114,37 @@ export class BookmarkService {
     return bookmarksToRemove;
   }
 
+  public orderByDomain(): void {
+    const newBookmarks = this.sortBookmarksByDomainFrequency(Array.from(this.bookmarks.values()));
+    this.bookmarks.clear();
+    this.bookmarks = new Map(newBookmarks.map((b) => [b.id, b]));
+  }
+
+  extractDomain(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      console.warn(`Invalid URL detected: ${url}`);
+      return 'invalid-url';
+    }
+  }
+
+  private sortBookmarksByDomainFrequency(bookmarks: Bookmark[]): Bookmark[] {
+    if (!bookmarks?.length) return [];
+
+    return Object.entries(Object.groupBy(bookmarks, (bookmark) => bookmark.folder)).flatMap(
+      ([, folderBookmarks]) => {
+        const domainGroups = Object.groupBy(folderBookmarks as Bookmark[], (bookmark) =>
+          this.extractDomain(bookmark.url),
+        );
+
+        return Object.entries(domainGroups)
+          .sort(([, a], [, b]) => (b as Bookmark[]).length - (a as Bookmark[]).length)
+          .flatMap(([, domainBookmarks]) => domainBookmarks as Bookmark[]);
+      },
+    );
+  }
+
   public getAll(): Bookmark[] {
     return Array.from(this.bookmarks.values());
   }

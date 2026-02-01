@@ -166,6 +166,10 @@ export class BookmarkManager {
     return extracted;
   }
 
+  public orderBookmarksByDomain(): void {
+    this.service.orderByDomain();
+  }
+
   public getAllBookmarks(): Bookmark[] {
     return this.service.getAll();
   }
