@@ -27,6 +27,10 @@ export class BookmarkService {
     return this.bookmarks.get(id);
   }
 
+  public findByUrl(url: string): string | undefined {
+    return this.urlIndex.get(url);
+  }
+
   public update(id: string, updatedBookmark: Bookmark): Bookmark | null {
     const existing = this.findById(id);
 

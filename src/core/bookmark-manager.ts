@@ -120,17 +120,24 @@ export class BookmarkManager {
     return deleted;
   }
 
-  public deleteBookmarks(bookmarks: Bookmark[]): number {
+  public deleteBookmarks(bookmarks: Bookmark[], key: 'id' | 'url' = 'id'): number {
     if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
       this.logger.error('No bookmarks provided');
       return 0;
     }
 
-    const ids = bookmarks.map((b) => b.id);
+    let ids: string[];
+
+    if (key === 'url') {
+      ids = bookmarks
+        .map((b) => this.service.findByUrl(b.url))
+        .filter((id): id is string => id !== undefined);
+    } else {
+      ids = bookmarks.map((b) => b.id);
+    }
+
     const deleted = this.service.deleteMany(ids);
-
     this.logger.info(`Deleted ${deleted} of ${bookmarks.length} bookmarks`);
-
     return deleted;
   }
 
