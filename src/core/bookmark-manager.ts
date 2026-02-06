@@ -1,176 +1,327 @@
 import { HtmlParser } from '@/parsers/html-parser';
-import { BookmarkService } from '@/services/bookmark.service';
+import type { BookmarkService } from '@/services/bookmark.service';
 import type { Bookmark, SearchOptions } from '@/types/bookmark';
 import { FileHandler } from '@/utils/file-handler';
 import { Logger } from '@/utils/logger';
 
+export interface OperationResult<T = void> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  count?: number;
+}
+
 export class BookmarkManager {
-  private service = new BookmarkService();
+  private readonly bookmarkService: BookmarkService;
 
-  private parser = new HtmlParser();
-  private fileHandler = new FileHandler();
-  private logger = new Logger();
+  private readonly fileHandler = new FileHandler();
+  private readonly logger = new Logger();
+  private readonly parser = new HtmlParser();
 
-  constructor(private path: string) {}
+  private readonly path: string;
 
-  public async loadBookmarks(): Promise<void> {
+  constructor(path: string, allowDuplicates = false) {
+    this.path = path;
+    this.bookmarkService = new BookmarkService(allowDuplicates);
+  }
+
+  async loadBookmarks(): Promise<OperationResult<number>> {
     try {
       const content = await this.fileHandler.read(this.path);
       const bookmarks = this.parser.parse(content);
 
-      const created = this.service.createMany(bookmarks);
-      const total = this.service.getAll().length;
+      const created = this.bookmarkService.createMany(bookmarks);
+      const total = this.bookmarkService.findAll().length;
 
       this.logger.info(`Loaded ${total} bookmarks (${created} new)`);
+
+      return {
+        success: true,
+        data: total,
+        count: created,
+      };
     } catch (error) {
-      this.logger.error('Failed to load bookmarks', error);
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error('Failed to load bookmarks', errorMessage);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
   }
 
-  public async saveBookmarks(): Promise<void> {
+  async saveBookmarks(): Promise<OperationResult> {
     try {
-      const bookmarks = this.service.getAll();
+      const bookmarks = this.bookmarkService.findAll();
 
       if (bookmarks.length === 0) {
         this.logger.warn('No bookmarks to save');
+        return { success: true };
       }
 
       const htmlContent = this.parser.serialize(bookmarks);
       await this.fileHandler.write(this.path, htmlContent);
 
       this.logger.info(`Saved ${bookmarks.length} bookmarks to ${this.path}`);
+
+      return { success: true, count: bookmarks.length };
     } catch (error) {
-      this.logger.error('Failed to save bookmarks', error);
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error('Failed to save bookmarks', errorMessage);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
   }
 
-  public async saveOutputBookmarks(bookmarks: Bookmark[], fileName: string): Promise<void> {
-    if (bookmarks.length === 0) {
-      this.logger.warn('No bookmarks to save');
-    }
-
-    const targetPath = `data/staged/${fileName}.html`;
-
+  async saveOutputBookmarks(bookmarks: Bookmark[], outputPath?: string): Promise<OperationResult> {
     try {
+      if (bookmarks.length === 0) {
+        this.logger.warn('No bookmarks to save');
+        return { success: true, count: 0 };
+      }
+
+      const targetPath = outputPath || this.getDefaultOutputPath(this.path);
+
       const htmlContent = this.parser.serialize(bookmarks);
       await this.fileHandler.write(targetPath, htmlContent);
 
       this.logger.info(`Saved ${bookmarks.length} bookmarks to ${targetPath}`);
+
+      return { success: true, count: bookmarks.length };
     } catch (error) {
-      this.logger.error('Failed to save output bookmarks', error);
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error('Failed to save output bookmarks', errorMessage);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
   }
 
-  public async deleteFile(): Promise<void> {
+  async deleteFile(): Promise<OperationResult> {
     try {
       await this.fileHandler.delete(this.path);
       this.logger.info(`Deleted file: ${this.path}`);
+
+      return { success: true };
     } catch (error) {
-      this.logger.error('Failed to delete file', error);
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error('Failed to delete file', errorMessage);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
   }
 
-  // Operations CRUD
-  public addBookmark(bookmark: Bookmark): Bookmark | null {
-    return this.service.create(bookmark);
+  // OPERACIONES CRUD
+
+  addBookmark(bookmark: Bookmark, folderName?: string): OperationResult<Bookmark> {
+    if (!this.isValidBookmark(bookmark)) {
+      return {
+        success: false,
+        error: 'Invalid bookmark data',
+      };
+    }
+
+    const bookmarkToAdd = folderName ? { ...bookmark, folder: folderName } : bookmark;
+
+    const created = this.bookmarkService.create(bookmarkToAdd);
+
+    if (created) {
+      this.logger.debug(`Added bookmark: ${bookmark.title}`);
+
+      return { success: true, data: bookmarkToAdd };
+    }
+
+    return {
+      success: false,
+      error: 'Bookmark already exists or creation failed',
+    };
   }
 
-  public addBookmarks(bookmarks: Bookmark[], folder?: string): number {
+  addBookmarks(bookmarks: Bookmark[], folderName?: string): OperationResult<number> {
     if (bookmarks.length === 0) {
-      this.logger.error('No bookmarks provided');
-      return 0;
+      return {
+        success: false,
+        error: 'No bookmarks provided',
+      };
     }
 
-    const bookmarksToAdd = folder ? bookmarks.map((b) => ({ ...b, folder })) : bookmarks;
-    const created = this.service.createMany(bookmarksToAdd);
+    const bookmarksToAdd = folderName
+      ? bookmarks.map((b) => ({ ...b, folder: folderName }))
+      : bookmarks;
+
+    const created = this.bookmarkService.createMany(bookmarksToAdd);
 
     this.logger.info(`Added ${created} of ${bookmarks.length} bookmarks`);
-    return created;
+
+    return {
+      success: created > 0,
+      data: created,
+      count: created,
+    };
   }
 
-  public updateBookmark(id: string, bookmark: Bookmark): Bookmark | null {
-    const updated = this.service.update(id, bookmark);
-
-    if (updated === null) return null;
-
-    this.logger.debug(`Updated bookmark: ${id}`);
-    return updated;
-  }
-
-  public updateBookmarks(bookmarks: Bookmark[]): number {
-    if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
-      this.logger.error('No bookmarks provided');
-      return 0;
+  updateBookmark(id: string, bookmark: Bookmark): OperationResult<Bookmark> {
+    if (!this.isValidBookmark(bookmark)) {
+      return {
+        success: false,
+        error: 'Invalid bookmark data',
+      };
     }
 
-    const updated = this.service.updateMany(bookmarks);
+    const updated = this.bookmarkService.update(id, bookmark);
+
+    if (updated) {
+      this.logger.debug(`Updated bookmark: ${id}`);
+
+      return { success: true, data: bookmark };
+    }
+
+    return {
+      success: false,
+      error: 'Bookmark not found or update failed',
+    };
+  }
+
+  updateBookmarks(bookmarks: Bookmark[]): OperationResult<number> {
+    if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+      return {
+        success: false,
+        error: 'No bookmarks provided',
+      };
+    }
+
+    const updated = this.bookmarkService.updateMany(bookmarks);
 
     this.logger.info(`Updated ${updated} of ${bookmarks.length} bookmarks`);
 
-    return updated;
+    return {
+      success: updated > 0,
+      data: updated,
+      count: updated,
+    };
   }
 
-  public deleteBookmark(id: string): boolean {
-    const deleted = this.service.delete(id);
+  deleteBookmark(id: string): OperationResult {
+    const deleted = this.bookmarkService.delete(id);
 
-    if (!deleted) {
-      this.logger.error(`Failed to delete bookmark: ${id}`);
+    if (deleted) {
+      this.logger.debug(`Deleted bookmark: ${id}`);
+
+      return { success: true };
     }
 
-    return deleted;
+    return {
+      success: false,
+      error: 'Bookmark not found',
+    };
   }
 
-  public deleteBookmarks(bookmarks: Bookmark[], key: 'id' | 'url' = 'id'): number {
+  deleteBookmarks(bookmarks: Bookmark[]): OperationResult<number> {
     if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
-      this.logger.error('No bookmarks provided');
-      return 0;
+      return {
+        success: false,
+        error: 'No bookmarks provided',
+      };
     }
 
-    let ids: string[];
+    const ids = bookmarks.map((b) => b.id);
+    const deleted = this.bookmarkService.deleteMany(ids);
 
-    if (key === 'url') {
-      ids = bookmarks
-        .map((b) => this.service.findByUrl(b.url))
-        .filter((id): id is string => id !== undefined);
-    } else {
-      ids = bookmarks.map((b) => b.id);
-    }
-
-    const deleted = this.service.deleteMany(ids);
     this.logger.info(`Deleted ${deleted} of ${bookmarks.length} bookmarks`);
-    return deleted;
+
+    return {
+      success: deleted > 0,
+      data: deleted,
+      count: deleted,
+    };
   }
 
-  public searchBookmarksBy(options: SearchOptions): Bookmark[] {
-    const results = this.service.searchBy(options);
+  clearBookmarks(): OperationResult {
+    const count = this.bookmarkService.findAll().length;
 
-    if (results.length === 0) {
-      this.logger.info(`No se han encontrado marcadores con palabras clave`);
+    if (count === 0) {
+      this.logger.warn('No bookmarks to clear');
+      return { success: true, count: 0 };
+    }
+
+    const ids = this.bookmarkService.findAll().map((b) => b.id);
+    this.bookmarkService.deleteMany(ids);
+
+    this.logger.info(`Cleared ${count} bookmarks`);
+
+    return { success: true, count };
+  }
+
+  findBookmarksBy(options: SearchOptions): Bookmark[] {
+    try {
+      const results = this.bookmarkService.findBy(options);
+      this.logger.debug(`Search returned ${results.length} results`);
+      return results;
+    } catch (error) {
+      this.logger.error('Search failed', this.getErrorMessage(error));
       return [];
     }
-
-    this.logger.info(`Se han encontrado ${results.length} marcadores con palabras clave`);
-
-    return results;
   }
 
-  public extractBookmarksBy(options: SearchOptions): Bookmark[] {
-    const extracted = this.service.pickBy(options);
+  getAllBookmarks(): Bookmark[] {
+    return this.bookmarkService.findAll();
+  }
 
-    if (extracted.length > 0) {
-      this.logger.info(`Extracted ${extracted.length} bookmarks using keywords`);
-    } else {
-      this.logger.info(`No bookmarks found using keywords`);
+  getBookmarkById(id: string): Bookmark | undefined {
+    return this.bookmarkService.findById(id);
+  }
+
+  getBookmarkCount(): number {
+    return this.bookmarkService.findAll().length;
+  }
+
+  private isValidBookmark(bookmark: Bookmark): boolean {
+    return !!(bookmark && bookmark.id && bookmark.url && this.isValidUrl(bookmark.url));
+  }
+
+  private isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
     }
-
-    return extracted;
   }
 
-  public orderBookmarksByDomain(): void {
-    this.service.orderByDomain();
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
   }
 
-  public getAllBookmarks(): Bookmark[] {
-    return this.service.getAll();
+  private getDefaultOutputPath(originalPath: string): string {
+    const lastDotIndex = originalPath.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+      return `${originalPath}_output`;
+    }
+    const basePath = originalPath.substring(0, lastDotIndex);
+    const extension = originalPath.substring(lastDotIndex);
+    return `${basePath}_output${extension}`;
+  }
+
+  getStatistics() {
+    const bookmarks = this.bookmarkService.findAll();
+    const folders = new Set(bookmarks.map((b) => b.folder)).size;
+
+    return {
+      total: bookmarks.length,
+      folders,
+      averagePerFolder: folders > 0 ? (bookmarks.length / folders).toFixed(2) : 0,
+    };
   }
 }
