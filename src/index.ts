@@ -36,7 +36,7 @@ oldFile.extractBookmarksBy({
 });
 
 const updatedBookmarks = oldFile.getAllBookmarks().map((b) => {
-  b.folder = '🏚️ old' + b.folder;
+  b.folder = '🏚️ old > ' + b.folder;
   return b;
 });
 oldFile.updateBookmarks(updatedBookmarks);
