@@ -3,37 +3,33 @@ import { BookmarkManagerFacade } from '@/core/bookmark-manager-facade';
 const manager = new BookmarkManagerFacade();
 
 const ultimateFile = await manager.load('data//ultimate_file.html');
+const oldFile = await manager.load('data//old_data.html');
 
-let files = await manager.getFilesInDirectory('data//original data/');
-files = files.filter((file) => file.endsWith('html'));
-console.log(files);
+let currentFiles = await manager.getFilesInDirectory('data//original data/');
+currentFiles = currentFiles.filter((file: string) => file.endsWith('html'));
 
-for (const file of files) {
+for (const file of currentFiles) {
   const bookmarkManager = await manager.load(file);
   ultimateFile.addBookmarks(bookmarkManager.getAllBookmarks());
   await bookmarkManager.deleteFile();
 }
 
-await ultimateFile.saveBookmarks();
+let oldFiles = await manager.getFilesInDirectory('data//prev data/');
+oldFiles = oldFiles.filter((file: string) => file.endsWith('html'));
 
-const allCurrentBookmarks = ultimateFile.getAllBookmarks();
-
-const oldFile = await manager.load('data//old_data.html');
-
-let filesOld = await manager.getFilesInDirectory('data//prev data/');
-filesOld = filesOld.filter((file) => file.endsWith('html'));
-console.log(filesOld);
-
-for (const file of filesOld) {
+for (const file of oldFiles) {
   const bookmarkManager = await manager.load(file);
   oldFile.addBookmarks(bookmarkManager.getAllBookmarks());
   await bookmarkManager.deleteFile();
 }
 
-oldFile.extractBookmarksBy({
-  includeWords: allCurrentBookmarks.map((b) => b.url),
-  searchIn: ['url'],
-});
+const currentBookmarks = ultimateFile.getAllBookmarks()
+const currentUrls = currentBookmarks.map(b => b.url)
+
+const bookmarksToDelete = oldFile.getAllBookmarks().filter(b => {
+  return currentUrls.includes(b.url)
+})
+oldFile.deleteBookmarks(bookmarksToDelete)
 
 const updatedBookmarks = oldFile.getAllBookmarks().map((b) => {
   b.folder = '🏚️ old > ' + b.folder;
@@ -41,4 +37,5 @@ const updatedBookmarks = oldFile.getAllBookmarks().map((b) => {
 });
 oldFile.updateBookmarks(updatedBookmarks);
 
+await ultimateFile.saveBookmarks();
 await oldFile.saveBookmarks();
