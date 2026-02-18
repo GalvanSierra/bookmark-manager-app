@@ -1,0 +1,16 @@
+{
+  "name": "Bun Development",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:latest": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-nodejs-debug"
+      ]
+    }
+  },
+  "postCreateCommand": "curl -fsSL https://bun.sh/install | bash && echo 'export PATH=$HOME/.bun/bin:$PATH' >> $HOME/.bashrc",
+  "remoteUser": "vscode"
+}   
