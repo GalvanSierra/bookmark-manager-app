@@ -1,6 +1,7 @@
+import { BookmarkManagerFacade } from '@/core/bookmark-manager-facade';
 import { FileHandler } from '@/utils/file-handler';
 
-// const manager = new BookmarkManagerFacade();
+const manager = new BookmarkManagerFacade();
 
 // const ultimateFile = await manager.load('data//ultimate_file.html');
 
