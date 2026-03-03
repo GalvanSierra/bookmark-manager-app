@@ -5,13 +5,13 @@ import { FileHandler } from '@/utils/file-handler';
 import { Logger } from '@/utils/logger';
 
 export class BookmarkManager {
-  private service = new BookmarkService();
-
-  private parser = new HtmlParser();
-  private fileHandler = new FileHandler();
-  private logger = new Logger();
-
-  constructor(private path: string) {}
+  constructor(
+    private path: string,
+    private fileHandler: FileHandler,
+    private parser: HtmlParser,
+    private service: BookmarkService,
+    private logger: Logger,
+  ) {}
 
   public async loadBookmarks(): Promise<void> {
     try {

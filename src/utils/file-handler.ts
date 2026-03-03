@@ -2,7 +2,7 @@ import { Logger } from '@/utils/logger';
 import { rm } from 'node:fs/promises';
 
 export class FileHandler {
-  private logger = new Logger();
+  constructor(private logger: Logger) {}
 
   async read(path: string): Promise<string> {
     const file = Bun.file(path);
